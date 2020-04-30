@@ -11,7 +11,7 @@ NUM_LOGITS = 10000
 # The input number to the last layer (found by printing the model)
 NUM_INPUT = 2048
 # The path this baseline model will be saved to
-SAVE_PATH = "./base_model_modified"
+SAVE_PATH = "./baseline_model_modified"
 
 base_model = torchvision.models.resnet50(pretrained=True)
 
@@ -27,4 +27,4 @@ for child in base_model.children():
 base_model.fc = torch.nn.Linear(NUM_INPUT, NUM_LOGITS)
 
 # Writing model to disc
-torch.save(base_model.state_dict(), SAVE_PATH)
+torch.save(base_model, SAVE_PATH)

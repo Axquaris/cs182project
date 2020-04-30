@@ -10,10 +10,20 @@ import numpy as np
 import torch
 import torchvision
 import torchvision.transforms as transforms
-from model import Net
 
 from torch import nn
 
+PATH = None
+
+# Once we add more models, update this set here and the input statement
+while PATH not in {"baseline"}:
+    if PATH != None:
+        print("Invalid choice.")
+    PATH = input("Which model to train on (baseline or _____): ")
+
+if PATH == "baseline":
+    PATH = "baseline_model_modified"
+PATH = "models/" + PATH;
 
 def main():
     # Create a pytorch dataset
@@ -37,8 +47,13 @@ def main():
                                                shuffle=True, num_workers=4, pin_memory=True)
 
     # Create a simple model
-    model = Net(len(CLASS_NAMES), im_height, im_width)
-    optim = torch.optim.Adam(model.parameters())
+    model = torch.load(PATH)
+    # source: https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html
+    params_to_update = []
+    for name,param in model.named_parameters():
+        if param.requires_grad == True:
+            params_to_update.append(param)
+    optim = torch.optim.Adam(params_to_update)
     criterion = nn.CrossEntropyLoss()
     for i in range(num_epochs):
         train_total, train_correct = 0,0
