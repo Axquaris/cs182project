@@ -14,7 +14,8 @@ import torchvision
 import torchvision.transforms as transforms
 
 from torch import nn
-from models import MODEL_DIR, BASELINE_PATH
+from datetime import datetime
+from models import MODEL_DIR, BASELINE_PATH, OUTPUT_DIR
 
 # Map string names to load paths for all possible existing models
 model_paths = {
@@ -75,7 +76,7 @@ def main(args):
         print("Saving model checkpoint at end of epoch {0}".format(i))
         torch.save({
             'net': model.state_dict(),
-        }, 'epoch_{0}_checkpoint.pt'.format(i))
+        }, os.path.join(args.output_dir, 'epoch_{0}_checkpoint.pt'.format(i)))
 
 
 if __name__ == '__main__':
@@ -96,6 +97,13 @@ if __name__ == '__main__':
         torch.backends.cudnn.benchmark = True
     else:
         args.device = torch.device('cpu')
+
+    # Where intermediate checkpoints will be stored
+    timestamp = datetime.now().strftime("%d-%m-%Y-%H:%M:%S")
+    args.output_dir = os.path.join(OUTPUT_DIR, "{0}_{1}_{2}_{3}_{4}".format(args.model, args.epochs, args.batch_size, args.learning_rate, timestamp))
+
+    if not os.path.exists(args.output_dir):
+        os.mkdir(args.output_dir)
 
 
 
