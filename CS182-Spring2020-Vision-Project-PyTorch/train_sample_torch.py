@@ -6,6 +6,8 @@ and to validate your own code submission.
 """
 
 import pathlib
+import os
+import argparse
 import numpy as np
 import torch
 import torchvision
@@ -13,17 +15,19 @@ import torchvision.transforms as transforms
 
 from torch import nn
 
-PATH = None
+parser = argparse.ArgumentParser()
+
+parser.add_argument('--model', default="baseline")
+args = parser.parse_args()
+
+PATH = args.model
 
 # Once we add more models, update this set here and the input statement
-while PATH not in {"baseline"}:
-    if PATH != None:
-        print("Invalid choice.")
-    PATH = input("Which model to train on (baseline or _____): ")
+assert PATH in {"baseline"}, "Invalid model choice"
 
 if PATH == "baseline":
     PATH = "baseline_model_modified"
-PATH = "models/" + PATH;
+PATH = os.path.join("models", PATH)
 
 def main():
     # Create a pytorch dataset
@@ -39,6 +43,8 @@ def main():
     num_epochs = 1
 
     data_transforms = transforms.Compose([
+        transforms.Resize((im_height, im_width)),
+        transforms.CenterCrop((im_height, im_width)),
         transforms.ToTensor(),
         transforms.Normalize((0, 0, 0), tuple(np.sqrt((255, 255, 255)))),
     ])
@@ -50,7 +56,7 @@ def main():
     model = torch.load(PATH)
     # source: https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html
     params_to_update = []
-    for name,param in model.named_parameters():
+    for _,param in model.named_parameters():
         if param.requires_grad == True:
             params_to_update.append(param)
     optim = torch.optim.Adam(params_to_update)
@@ -70,7 +76,7 @@ def main():
             print(f'training {100 * idx / len(train_loader):.2f}%: {train_correct / train_total:.3f}', end='')
         torch.save({
             'net': model.state_dict(),
-        }, 'latest.pt')
+        }, 'epoch_{0}_checkpoint.pt'.format(i))
 
 
 if __name__ == '__main__':
