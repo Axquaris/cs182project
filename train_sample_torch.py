@@ -49,7 +49,7 @@ def main(args):
                                                shuffle=True, num_workers=4, pin_memory=True)
 
     # Create a simple model
-    model = torch.load(PATH)
+    model = torch.load(PATH).to(device=args.device)
     # source: https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html
     params_to_update = []
     for _,param in model.named_parameters():
@@ -60,6 +60,8 @@ def main(args):
     for i in range(args.epochs):
         train_total, train_correct = 0,0
         for idx, (inputs, targets) in enumerate(train_loader):
+            inputs = inputs.to(device=args.device)
+            targets = targets.to(device=args.device)
             optim.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, targets)
@@ -85,6 +87,16 @@ if __name__ == '__main__':
     parser.add_argument('-lr', '--learning-rate', default=1e-4, type=float)
     parser.add_argument('-h', '--im_height', default=64, type=int)
     parser.add_argument('-w', '--im_width', default=64, type=int)
+    parser.add_argument('--gpu', action="store_true")
     args = parser.parse_args()
+
+    args.device = None
+    if args.gpu and torch.cuda.is_available():
+        args.device = torch.device('cuda')
+        torch.backends.cudnn.benchmark = True
+    else:
+        args.device = torch.device('cpu')
+
+
 
     main(args)
