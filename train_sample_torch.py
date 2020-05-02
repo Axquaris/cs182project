@@ -37,7 +37,8 @@ def main(args):
     data_dir = pathlib.Path('./data/tiny-imagenet-200')
     image_count = len(list(data_dir.glob('**/*.JPEG')))
     CLASS_NAMES = np.array([item.name for item in (data_dir / 'train').glob('*')])
-    print('Discovered {} images'.format(image_count))
+    if args.verbose:
+        print('Discovered {} images'.format(image_count))
 
     data_transforms = transforms.Compose([
         transforms.Resize((args.im_height, args.im_width)),
@@ -50,7 +51,11 @@ def main(args):
                                                shuffle=True, num_workers=4, pin_memory=True)
 
     # Create a simple model
+    if args.verbose:
+        print("loading model from {0}".format(PATH))
     model = torch.load(PATH).to(device=args.device)
+    if args.verbose:
+        print("Successfully loaded model")
     # source: https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html
     params_to_update = []
     for _,param in model.named_parameters():
@@ -59,6 +64,9 @@ def main(args):
     optim = torch.optim.Adam(params_to_update, lr=args.learning_rate)
     criterion = nn.CrossEntropyLoss()
     for i in range(args.epochs):
+        if args.verbose:
+            print("Beginning epoch {0}".format(i))
+        
         train_total, train_correct = 0,0
         for idx, (inputs, targets) in enumerate(train_loader):
             inputs = inputs.to(device=args.device)
@@ -71,7 +79,8 @@ def main(args):
             _, predicted = outputs.max(1)
             train_total += targets.size(0)
             train_correct += predicted.eq(targets).sum().item()
-            print(f'training {100 * idx / len(train_loader):.2f}%: {train_correct / train_total:.3f}')
+            if args.verbose:
+                print(f'training {100 * idx / len(train_loader):.2f}%: {train_correct / train_total:.3f}')
         print("Saving model checkpoint at end of epoch {0}".format(i))
         torch.save({
             'net': model.state_dict(),
@@ -88,13 +97,18 @@ if __name__ == '__main__':
     parser.add_argument('-h', '--im_height', default=64, type=int)
     parser.add_argument('-w', '--im_width', default=64, type=int)
     parser.add_argument('--gpu', action="store_true")
+    parser.add_argument('--verbose', action="store_true")
     args = parser.parse_args()
 
     args.device = None
     if args.gpu and torch.cuda.is_available():
+        if args.verbose:
+            print("Running on GPU")
         args.device = torch.device('cuda')
         torch.backends.cudnn.benchmark = True
     else:
+        if args.verbose:
+            print("Running on CPU")
         args.device = torch.device('cpu')
 
     # Where intermediate checkpoints will be stored
