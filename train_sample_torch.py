@@ -6,14 +6,28 @@ and to validate your own code submission.
 """
 
 import pathlib
+import os
+import argparse
 import numpy as np
 import torch
 import torchvision
 import torchvision.transforms as transforms
-from model import Net
 
 from torch import nn
 
+parser = argparse.ArgumentParser()
+
+parser.add_argument('--model', default="baseline")
+args = parser.parse_args()
+
+PATH = args.model
+
+# Once we add more models, update this set here and the input statement
+assert PATH in {"baseline"}, "Invalid model choice"
+
+if PATH == "baseline":
+    PATH = "baseline_model_modified"
+PATH = os.path.join("models", PATH)
 
 def main():
     # Create a pytorch dataset
@@ -29,6 +43,8 @@ def main():
     num_epochs = 1
 
     data_transforms = transforms.Compose([
+        transforms.Resize((im_height, im_width)),
+        transforms.CenterCrop((im_height, im_width)),
         transforms.ToTensor(),
         transforms.Normalize((0, 0, 0), tuple(np.sqrt((255, 255, 255)))),
     ])
@@ -37,8 +53,13 @@ def main():
                                                shuffle=True, num_workers=4, pin_memory=True)
 
     # Create a simple model
-    model = Net(len(CLASS_NAMES), im_height, im_width)
-    optim = torch.optim.Adam(model.parameters())
+    model = torch.load(PATH)
+    # source: https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html
+    params_to_update = []
+    for _,param in model.named_parameters():
+        if param.requires_grad == True:
+            params_to_update.append(param)
+    optim = torch.optim.Adam(params_to_update)
     criterion = nn.CrossEntropyLoss()
     for i in range(num_epochs):
         train_total, train_correct = 0,0
@@ -55,7 +76,7 @@ def main():
             print(f'training {100 * idx / len(train_loader):.2f}%: {train_correct / train_total:.3f}', end='')
         torch.save({
             'net': model.state_dict(),
-        }, 'latest.pt')
+        }, 'epoch_{0}_checkpoint.pt'.format(i))
 
 
 if __name__ == '__main__':
