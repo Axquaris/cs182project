@@ -16,6 +16,7 @@ import torchvision.transforms as transforms
 from torch import nn
 from datetime import datetime
 from models import MODEL_DIR, BASELINE_PATH, OUTPUT_DIR
+from data_helpers import DATA_DIR, sample_batch
 
 # Map string names to load paths for all possible existing models
 model_paths = {
@@ -34,9 +35,8 @@ def main(args):
 
 
     # Create a pytorch dataset
-    data_dir = pathlib.Path('./data/tiny-imagenet-200')
-    image_count = len(list(data_dir.glob('**/*.JPEG')))
-    CLASS_NAMES = np.array([item.name for item in (data_dir / 'train').glob('*')])
+    image_count = len(list(DATA_DIR.glob('**/*.JPEG')))
+    CLASS_NAMES = np.array([item.name for item in (DATA_DIR / 'train').glob('*')])
     if args.verbose:
         print('Discovered {} images'.format(image_count))
 
@@ -46,9 +46,11 @@ def main(args):
         transforms.ToTensor(),
         transforms.Normalize((0, 0, 0), tuple(np.sqrt((255, 255, 255)))),
     ])
-    train_set = torchvision.datasets.ImageFolder(data_dir / 'train', data_transforms)
+    train_set = torchvision.datasets.ImageFolder(DATA_DIR / 'train', data_transforms)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size,
                                                shuffle=True, num_workers=4, pin_memory=True)
+
+    val_sampler = sample_batch(os.path.join(DATA_DIR, "val"), None, batch_size=32, transform=data_transforms)
 
     # Create a simple model
     if args.verbose:
@@ -81,10 +83,29 @@ def main(args):
             train_correct += predicted.eq(targets).sum().item()
             if args.verbose:
                 print(f'training {100 * idx / len(train_loader):.2f}%: {train_correct / train_total:.3f}')
-        print("Saving model checkpoint at end of epoch {0}".format(i))
+                print("Loss:\t{0}".format(loss.item()))
+        if args.verbose:
+            print("Saving model checkpoint at end of epoch {0}".format(i))
         torch.save({
             'net': model.state_dict(),
         }, os.path.join(args.output_dir, 'epoch_{0}_checkpoint.pt'.format(i)))
+
+        # Validation of model 
+        model.eval()
+        inputs, targets = val_sampler()
+        with torch.no_grad():
+            inputs = inputs.to(device=args.device)
+            targets = targets.to(device=args.device)
+            out = model(inputs)
+            loss = criterion(out, targets).item()
+            _, pred = out.max(1)
+        correct = pred.eq(targets).sum().item()
+        total = targets.size(0)
+        val_accuracy = correct / total
+        model.train()
+
+        print("Validation at end of epoch {0}".format(i))
+        print("Loss:\t{0}Accuracy:\t{1}".format(loss, val_accuracy))
 
 
 if __name__ == '__main__':

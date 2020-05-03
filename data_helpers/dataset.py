@@ -17,7 +17,7 @@ class TransformsDataset(Dataset):
 
 
 
-def sample_img(path_root, img_size, batch_size):
+def sample_batch(path_root, img_size, batch_size, transform=None):
     """
     path_root (string)      the root file path to search for images (.png, .jpg, .mp4). Will recursively
                                 search subdirectories
@@ -35,19 +35,21 @@ def sample_img(path_root, img_size, batch_size):
         if not loaded:
             loader = iter(create_ds())
             loaded = True
-        return next(loader)[0]
+        return next(loader)
 
-    transform = transforms.Compose(
-        [
-            transforms.Resize(img_size),
-            transforms.CenterCrop(img_size),
-            transforms.ToTensor(),
-            transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ]
-    )
+    if not transform:
+        transform = transforms.Compose(
+            [
+                transforms.Resize(img_size),
+                transforms.CenterCrop(img_size),
+                transforms.ToTensor(),
+                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+            ]
+        )
+    
     def create_ds():
         ds = datasets.ImageFolder(path_root, transform=transform)
-        loader = DataLoader(ds, batch_size=batch_size, shuffle=True, num_workers=1)
+        loader = DataLoader(ds, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
         return loader
     
     return sample_fn
