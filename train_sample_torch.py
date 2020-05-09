@@ -71,16 +71,12 @@ def main(args):
     validation_losses = []
     validation_accuracies = []
 
-    temp_step = 0
-
     for i in range(args.epochs):
         if args.verbose:
             print("Beginning epoch {0}".format(i))
         
         train_total, train_correct = 0,0
         for idx, (inputs, targets) in enumerate(train_loader):
-            if temp_step > 5:
-                break
             ## Train step 
             inputs = inputs.to(device=args.device)
             targets = targets.to(device=args.device)
@@ -97,8 +93,6 @@ def main(args):
             if args.verbose:
                 print(f'training {100 * idx / len(train_loader):.2f}%: {train_correct / train_total:.3f}')
                 print("Loss:\t{0}".format(loss.item()))
-            
-            temp_step += 1
         
         
         ## Validation of model 
