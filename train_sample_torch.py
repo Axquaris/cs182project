@@ -5,7 +5,7 @@ portions of the code. We provide this model in order to test the full pipeline,
 and to validate your own code submission.
 """
 
-import pathlib
+import glob
 import os
 import argparse
 import numpy as np
@@ -35,8 +35,7 @@ def main(args):
 
 
     # Create a pytorch dataset
-    image_count = len(list(DATA_DIR.glob('**/*.JPEG')))
-    CLASS_NAMES = np.array([item.name for item in (DATA_DIR / 'train').glob('*')])
+    image_count = len(list(glob.glob(os.path.join(DATA_DIR, '**/*.JPEG'), recursive=True)))
     if args.verbose:
         print('Discovered {} images'.format(image_count))
 
@@ -46,7 +45,7 @@ def main(args):
         transforms.ToTensor(),
         transforms.Normalize((0, 0, 0), tuple(np.sqrt((255, 255, 255)))),
     ])
-    train_set = torchvision.datasets.ImageFolder(DATA_DIR / 'train', data_transforms)
+    train_set = torchvision.datasets.ImageFolder(os.path.join(DATA_DIR, 'train'), data_transforms)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size,
                                                shuffle=True, num_workers=4, pin_memory=True)
 
@@ -65,12 +64,24 @@ def main(args):
             params_to_update.append(param)
     optim = torch.optim.Adam(params_to_update, lr=args.learning_rate)
     criterion = nn.CrossEntropyLoss()
+
+    # data structures to store important info
+    training_losses = []
+    training_accuracies = []
+    validation_losses = []
+    validation_accuracies = []
+
+    temp_step = 0
+
     for i in range(args.epochs):
         if args.verbose:
             print("Beginning epoch {0}".format(i))
         
         train_total, train_correct = 0,0
         for idx, (inputs, targets) in enumerate(train_loader):
+            if temp_step > 5:
+                break
+            ## Train step 
             inputs = inputs.to(device=args.device)
             targets = targets.to(device=args.device)
             optim.zero_grad()
@@ -81,16 +92,16 @@ def main(args):
             _, predicted = outputs.max(1)
             train_total += targets.size(0)
             train_correct += predicted.eq(targets).sum().item()
+            training_losses.append(loss.item())
+
             if args.verbose:
                 print(f'training {100 * idx / len(train_loader):.2f}%: {train_correct / train_total:.3f}')
                 print("Loss:\t{0}".format(loss.item()))
-        if args.verbose:
-            print("Saving model checkpoint at end of epoch {0}".format(i))
-        torch.save({
-            'net': model.state_dict(),
-        }, os.path.join(args.output_dir, 'epoch_{0}_checkpoint.pt'.format(i)))
-
-        # Validation of model 
+            
+            temp_step += 1
+        
+        
+        ## Validation of model 
         model.eval()
         inputs, targets = val_sampler()
         with torch.no_grad():
@@ -104,8 +115,25 @@ def main(args):
         val_accuracy = correct / total
         model.train()
 
+        ## Logs
         print("Validation at end of epoch {0}".format(i))
-        print("Loss:\t{0}Accuracy:\t{1}".format(loss, val_accuracy))
+        print("Loss:\t{0:.5f}Accuracy:\t{1}".format(loss, val_accuracy))
+        validation_accuracies.append(val_accuracy)
+        validation_losses.append(loss)
+        training_accuracies.append(train_correct / train_total)
+
+        ## Save model
+        if args.verbose:
+            print("Saving model checkpoint at end of epoch {0}".format(i))
+        torch.save({
+            'net': model.state_dict(),
+            't_loss' : training_losses,
+            't_acc' : training_accuracies,
+            'v_loss' : validation_losses,
+            'v_acc' : validation_accuracies
+        }, os.path.join(args.output_dir, 'epoch_{0}_checkpoint.pt'.format(i)))
+
+       
 
 
 if __name__ == '__main__':
