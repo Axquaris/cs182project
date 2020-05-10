@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms
+import numpy as np
 
 class TransformsDataset(Dataset):
 
@@ -15,7 +16,13 @@ class TransformsDataset(Dataset):
     def __len__(self):
         return len(self.base_ds) * len(transforms)
 
-
+def gen_base_transform(im_height, im_width):
+    return transforms.Compose([
+        transforms.Resize((im_height, im_width)),
+        transforms.CenterCrop((im_height, im_width)),
+        transforms.ToTensor(),
+        transforms.Normalize((0, 0, 0), tuple(np.sqrt((255, 255, 255)))),
+    ])
 
 def sample_batch(path_root, img_size, batch_size, transform=None):
     """
@@ -38,14 +45,7 @@ def sample_batch(path_root, img_size, batch_size, transform=None):
         return next(loader)
 
     if not transform:
-        transform = transforms.Compose(
-            [
-                transforms.Resize(img_size),
-                transforms.CenterCrop(img_size),
-                transforms.ToTensor(),
-                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-            ]
-        )
+        transform = gen_base_transform(img_size, img_size)
     
     def create_ds():
         ds = datasets.ImageFolder(path_root, transform=transform)

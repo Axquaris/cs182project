@@ -16,7 +16,7 @@ import torchvision.transforms as transforms
 from torch import nn
 from datetime import datetime
 from models import MODEL_DIR, BASELINE_PATH, OUTPUT_DIR
-from data_helpers import DATA_DIR, sample_batch
+from data_helpers import DATA_DIR, sample_batch, gen_base_transform
 
 # Map string names to load paths for all possible existing models
 model_paths = {
@@ -39,12 +39,7 @@ def main(args):
     if args.verbose:
         print('Discovered {} images'.format(image_count))
 
-    data_transforms = transforms.Compose([
-        transforms.Resize((args.im_height, args.im_width)),
-        transforms.CenterCrop((args.im_height, args.im_width)),
-        transforms.ToTensor(),
-        transforms.Normalize((0, 0, 0), tuple(np.sqrt((255, 255, 255)))),
-    ])
+    data_transforms = gen_base_transform(args.im_height, args.im_width)
     train_set = torchvision.datasets.ImageFolder(os.path.join(DATA_DIR, 'train'), data_transforms)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size,
                                                shuffle=True, num_workers=4, pin_memory=True)
