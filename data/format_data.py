@@ -30,7 +30,9 @@ def main(root_dir=default_root_dir, img_dir=default_img_dir, annotations_file=de
         for img in label_to_img[label]:
             prev_path = os.path.join(img_dir, img)
             new_path = os.path.join(label_dir, img)
-            shutil.move(prev_path, new_path) 
+            shutil.move(prev_path, new_path)
+
+    shutil.rmtree(default_img_dir) 
 
 if __name__ == '__main__':
     main()

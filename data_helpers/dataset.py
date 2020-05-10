@@ -16,7 +16,7 @@ class TransformsDataset(Dataset):
     def __len__(self):
         return len(self.base_ds) * len(transforms)
 
-def gen_base_transform(im_height, im_width):
+def gen_base_transform(im_height=64, im_width=64):
     return transforms.Compose([
         transforms.Resize((im_height, im_width)),
         transforms.CenterCrop((im_height, im_width)),

@@ -8,7 +8,7 @@ from config import BASELINE_PATH as SAVE_PATH
 # How many layers (out of 10) will NOT be updated
 NUM_FROZEN_LAYERS = 6
 # How many logits (classes) to have in the last layer
-NUM_LOGITS = 10000
+NUM_LOGITS = 200
 # The input number to the last layer (found by printing the model)
 NUM_INPUT = 2048
 

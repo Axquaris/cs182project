@@ -15,12 +15,13 @@ import torchvision.transforms as transforms
 
 from torch import nn
 from datetime import datetime
-from models import MODEL_DIR, BASELINE_PATH, OUTPUT_DIR
+from models import *
 from data_helpers import DATA_DIR, sample_batch, gen_base_transform
 
 # Map string names to load paths for all possible existing models
-model_paths = {
-    "baseline" : BASELINE_PATH
+name_to_model_cls = {
+    "baseline" : BaselineResNet,
+    "net" : Net
 }
 
 
@@ -29,9 +30,9 @@ def main(args):
     model_name = args.model
 
     # Once we add more models, update this set here and the input statement
-    assert model_name in model_paths, "Invalid model choice"
+    assert model_name in name_to_model_cls, "Invalid model choice"
 
-    PATH = model_paths[model_name]
+    model_cls = name_to_model_cls[model_name]
 
 
     # Create a pytorch dataset
@@ -48,8 +49,8 @@ def main(args):
 
     # Create a simple model
     if args.verbose:
-        print("loading model from {0}".format(PATH))
-    model = torch.load(PATH).to(device=args.device)
+        print("loading model...")
+    model = model_cls(im_height=args.im_height, im_width=args.im_width, dropout=args.dropout, num_frozen_layers=args.num_frozen_layers).to(device=args.device)
     if args.verbose:
         print("Successfully loaded model")
     # source: https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html
@@ -88,6 +89,7 @@ def main(args):
             if args.verbose:
                 print(f'training {100 * idx / len(train_loader):.2f}%: {train_correct / train_total:.3f}')
                 print("Loss:\t{0}".format(loss.item()))
+            
         
         
         ## Validation of model 
@@ -134,6 +136,8 @@ if __name__ == '__main__':
     parser.add_argument('-lr', '--learning-rate', default=1e-4, type=float)
     parser.add_argument('-h', '--im_height', default=64, type=int)
     parser.add_argument('-w', '--im_width', default=64, type=int)
+    parser.add_argument('-d', '--dropout', default=0.6, type=float)
+    parser.add_argument('-n', '--num-frozen-layers', default=6, type=int)
     parser.add_argument('--gpu', action="store_true")
     parser.add_argument('--verbose', action="store_true")
     args = parser.parse_args()
@@ -151,7 +155,7 @@ if __name__ == '__main__':
 
     # Where intermediate checkpoints will be stored
     timestamp = datetime.now().strftime("%d-%m-%Y-%H:%M:%S")
-    args.output_dir = os.path.join(OUTPUT_DIR, "{0}_{1}_{2}_{3}_{4}".format(args.model, args.epochs, args.batch_size, args.learning_rate, timestamp))
+    args.output_dir = os.path.join(OUTPUT_DIR, "{0}_{1}_{2}_{3}_{4}_{5}_{6}".format(args.model, args.num_frozen_layers, args.dropout, args.epochs, args.batch_size, args.learning_rate, timestamp))
 
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)

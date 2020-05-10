@@ -3,6 +3,7 @@ import numpy as np
 from torch import nn
 from torchvision import transforms, models
 from data_helpers import DATA_DIR, sample_batch
+from models import BaselineResNet
 
 data_transforms = transforms.Compose([
         transforms.Resize((64, 64)),
@@ -32,7 +33,6 @@ if __name__ == "__main__":
     assert len(sys.argv) == 2, "Please specify path to model checkpoint"
     chkpt_path = sys.argv[1]
     checkpoint = torch.load(chkpt_path, map_location=torch.device('cpu'))
-    model = models.resnet50()
-    model.fc = torch.nn.Linear(2048, 10000)
+    model = BaselineResNet()
     model.load_state_dict(checkpoint["net"])
     validate(model)
