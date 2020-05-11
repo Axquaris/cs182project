@@ -16,7 +16,7 @@ import torchvision.transforms as transforms
 from torch import nn
 from datetime import datetime
 from models import *
-from data_helpers import DATA_DIR, sample_batch, gen_base_transform
+from data_helpers import get_data_dir, sample_batch, gen_base_transform
 
 # Map string names to load paths for all possible existing models
 name_to_model_cls = {
@@ -33,6 +33,8 @@ def main(args):
     assert model_name in name_to_model_cls, "Invalid model choice"
 
     model_cls = name_to_model_cls[model_name]
+
+    DATA_DIR = get_data_dir(args.data_dir)
 
 
     # Create a pytorch dataset
@@ -140,6 +142,7 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--num-frozen-layers', default=6, type=int)
     parser.add_argument('--gpu', action="store_true")
     parser.add_argument('--verbose', action="store_true")
+    parser.add_argument('--data_dir', default="tiny-imagenet-200", type=str)
     args = parser.parse_args()
 
     args.device = None
