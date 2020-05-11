@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms
+import numpy as np
 
 class TransformsDataset(Dataset):
 
@@ -15,9 +16,15 @@ class TransformsDataset(Dataset):
     def __len__(self):
         return len(self.base_ds) * len(transforms)
 
+def gen_base_transform(im_height=64, im_width=64):
+    return transforms.Compose([
+        transforms.Resize((im_height, im_width)),
+        transforms.CenterCrop((im_height, im_width)),
+        transforms.ToTensor(),
+        transforms.Normalize((0, 0, 0), tuple(np.sqrt((255, 255, 255)))),
+    ])
 
-
-def sample_img(path_root, img_size, batch_size):
+def sample_batch(path_root, img_size, batch_size, transform=None):
     """
     path_root (string)      the root file path to search for images (.png, .jpg, .mp4). Will recursively
                                 search subdirectories
@@ -35,19 +42,14 @@ def sample_img(path_root, img_size, batch_size):
         if not loaded:
             loader = iter(create_ds())
             loaded = True
-        return next(loader)[0]
+        return next(loader)
 
-    transform = transforms.Compose(
-        [
-            transforms.Resize(img_size),
-            transforms.CenterCrop(img_size),
-            transforms.ToTensor(),
-            transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ]
-    )
+    if not transform:
+        transform = gen_base_transform(img_size, img_size)
+    
     def create_ds():
         ds = datasets.ImageFolder(path_root, transform=transform)
-        loader = DataLoader(ds, batch_size=batch_size, shuffle=True, num_workers=1)
+        loader = DataLoader(ds, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
         return loader
     
     return sample_fn
