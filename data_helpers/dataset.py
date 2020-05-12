@@ -11,9 +11,6 @@ std = [0.229, 0.224, 0.225]
 
 def gen_base_transform(im_height=64, im_width=64):
     return transforms.Compose([
-        # Following ops should be redundant???
-        # transforms.Resize((im_height, im_width)),
-        # transforms.CenterCrop((im_height, im_width)),
         transforms.ToTensor(),
         transforms.Normalize(mean, std),
     ])

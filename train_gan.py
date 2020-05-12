@@ -6,10 +6,9 @@ import torchvision.transforms as transforms
 from torch import nn
 from datetime import datetime
 from models import *
-from data_helpers import get_data_dir, sample_batch, gen_base_transform
+from data_helpers import DATA_DIR, sample_batch, gen_base_transform
 
 def main(args):
-    DATA_DIR = get_data_dir(args.data_dir)
     data_transforms = gen_base_transform(args.im_height, args.im_width)
     train_set = torchvision.datasets.ImageFolder(os.path.join(DATA_DIR, "train"), data_transforms)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True)
@@ -23,9 +22,9 @@ def main(args):
     gen = Generator(bottleneck_length=bottleneck_length).to(device=args.device)
 
     # Load pre-trained classifier
-    checkpoint = torch.load(args.classifier_path, map_location=torch.device('cpu'))
-    classifier = BaselineResNet().load_state_dict(checkpoint["net"])
-    classifier = classifier.to(device=args.device)
+    checkpoint = torch.load(args.classifier_path, map_location=args.device)
+    classifier = BaselineResNet()
+    classifier.load_state_dict(checkpoint["net"])
     if args.verbose:
         print("Models loaded successfully")
 
@@ -67,7 +66,7 @@ def main(args):
             D_G_z1 = outputs.mean().item()
 
             loss = loss_real + loss_fake
-            dis_losses.append(loss)
+            dis_losses.append(loss.item())
 
             optimD.step()
 
@@ -81,15 +80,27 @@ def main(args):
 
             loss_gen_gan = criterion(outputs, dis_targets)
             loss_gen_adv = whitebox_criterion(classifier(fake), adv_targets)
-            loss_gen_hinge = torch.mean(torch.max(torch.norm(gen_out.view(args.batch_size, -1), p=2, dim=1) - args.c, 0))
+
+            pertubation_norms = torch.norm(gen_out.view(args.batch_size, -1), p=2, dim=1)
+            loss_gen_hinge = torch.mean(torch.max(pertubation_norms - args.c, torch.zeros_like(pertubation_norms)))
             loss_gen = loss_gen_adv + args.alpha * loss_gen_gan + args.beta * loss_gen_hinge
             loss_gen.backward()
             optimG.step()
 
-            gen_losses.append(loss_gen)
+            loss_gen_info = {
+                "hinge_loss" : loss_gen_hinge.item(),
+                "adversarial_loss" : loss_gen_adv.item(),
+                "fooling_loss" : loss_gen_gan.item()
+            }
 
-            print(loss_gen)
-            print(loss)
+            if args.verbose and iter % args.print_every == 0:
+                print("Generator loss", loss_gen_info)
+                print("Discriminator loss", loss.item())
+
+            gen_losses.append(loss_gen_info)
+
+            iters += 1
+
 
         ## Save model
         if args.verbose:
@@ -107,6 +118,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(add_help=False)
 
     parser.add_argument('-b', '--batch-size', default=32, type=int)
+    parser.add_argument('-p', '--print-every', default=100, type=int)
     parser.add_argument('-e', '--epochs', default=200, type=int)
     parser.add_argument('-gen_lr', default=1e-4, type=float)
     parser.add_argument('-dis_lr', default=1e-4, type=float)
