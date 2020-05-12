@@ -17,7 +17,7 @@ def main(args):
     bottleneck_length = args.bottleneck_length
     if args.verbose:
         print("loading models ...")
-    dis = BaselineResNet(num_classes = 201).to(device=args.device)
+    dis = Discriminator().to(device=args.device)
     gen = Generator(bottleneck_length=bottleneck_length).to(device=args.device)
     if args.verbose:
         print("Models loaded successfully")
@@ -37,14 +37,43 @@ def main(args):
         if args.verbose:
             print(f"Beginning epoch {epoch}")
 
-        for idx, (inputs, targets) in enumerate(train_loader):
+        for idx, (inputs, _) in enumerate(train_loader):
             optimD.zero_grad()
             real_inputs = inputs.to(device=args.device)
             real_size = real_inputs.size(0)
 
-            label = torch.full((real_size,), real_label, device=args.device)
-            output = dis(real_inputs).view(-1)
-            print(output.shape)
+            targets = torch.full((real_size,), real_label, device=args.device)
+            outputs = dis(real_inputs).view(-1)
+
+            loss_real = criterion(outputs, targets)
+            loss_real.backward()
+
+            D_x = outputs.mean().item()
+
+            noise = torch.randn_like(real_inputs, device=args.device)
+            fake = torch.add(gen(noise), real_inputs)
+            targets.fill_(fake_label)
+            outputs = dis(fake.detach()).view(-1)
+
+            loss_fake = criterion(outputs, targets)
+            loss_fake.backward()
+            D_G_z1 = outputs.mean().item()
+
+            loss = loss_real + loss_fake
+
+            optimD.step()
+
+            optimG.zero_grad()
+            targets.fill_(real_label)
+            outputs = dis(fake).view(-1)
+
+            loss_gen = criterion(outputs, targets)
+            loss_gen.backward()
+            optimG.step()
+
+            print(loss_gen)
+            print(loss)
+
 
 
 if __name__ == '__main__':
