@@ -2,3 +2,7 @@
 **/out/
 **/__pycache__/
 **/tiny-imagenet*
+**/data/
+**/.ipynb_checkpoints/
+**/.vscode
+*.pt
