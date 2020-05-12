@@ -1,28 +1,43 @@
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms
 import numpy as np
+from functools import partial
+from torchvision import transforms
+# https://github.com/google-research/augmix
+from data_helpers.augmentations import augmix
 
-class TransformsDataset(Dataset):
-
-    def __init__(self, ds, transforms):
-        self.base_ds = ds
-        self.transforms = transforms
-
-    def __getitem__(self, idx):
-        ds_idx, trans_idx = idx / len(self.transforms), idx % len(self.transforms)
-        base_img, label = self.base_ds[ds_idx]
-        return (self.transforms[trans_idx](base_img), label)
-
-    def __len__(self):
-        return len(self.base_ds) * len(transforms)
+mean = [0.485, 0.456, 0.406]
+std = [0.229, 0.224, 0.225]
 
 def gen_base_transform(im_height=64, im_width=64):
     return transforms.Compose([
-        transforms.Resize((im_height, im_width)),
-        transforms.CenterCrop((im_height, im_width)),
+        # Following ops should be redundant???
+        # transforms.Resize((im_height, im_width)),
+        # transforms.CenterCrop((im_height, im_width)),
         transforms.ToTensor(),
-        transforms.Normalize((0, 0, 0), tuple(np.sqrt((255, 255, 255)))),
+        transforms.Normalize(mean, std),
     ])
+
+def gen_augmix_transforms(jsd=False, **augmix_kwargs):
+    assert not jsd, 'Not implemented yet'
+    t = []
+
+    preprocess = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean, std)
+    ])
+
+    augment = transforms.Lambda(partial(augmix, preprocess, **augmix_kwargs))
+    t.append(augment)
+
+    # if train:
+        # t.append(transforms.RandomResizedCrop(64))
+
+    # else:
+    #     t.append(transforms.CenterCrop(64))
+
+    return transforms.Compose(t)
 
 def sample_batch(path_root, img_size, batch_size, transform=None):
     """

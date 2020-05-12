@@ -170,7 +170,7 @@ augmentations_all = [
 ]
 
 
-def augmix(image, preprocess, all=True, aug_prob_coeff=1.,
+def augmix(preprocess, image, all=True, aug_prob_coeff=1.,
            mixture_width=3, mixture_depth=-1, severity=1):
     """Perform AugMix augmentations and compute mixture.
     """
