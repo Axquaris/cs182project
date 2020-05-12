@@ -16,7 +16,7 @@ import torchvision.transforms as transforms
 from torch import nn
 from datetime import datetime
 from models import *
-from data_helpers import get_data_dir, sample_batch, gen_base_transform
+from data_helpers import DATA_DIR, sample_batch, gen_base_transform, gen_augmix_transforms
 
 # Map string names to load paths for all possible existing models
 name_to_model_cls = {
@@ -34,20 +34,22 @@ def main(args):
 
     model_cls = name_to_model_cls[model_name]
 
-    DATA_DIR = get_data_dir(args.data_dir)
-
 
     # Create a pytorch dataset
     image_count = len(list(glob.glob(os.path.join(DATA_DIR, '**/*.JPEG'), recursive=True)))
     if args.verbose:
         print('Discovered {} images'.format(image_count))
-
-    data_transforms = gen_base_transform(args.im_height, args.im_width)
+    if args.augment:
+        if args.verbose:
+            print("Augmenting training data with severity {}".format(args.augment))
+        data_transforms = gen_augmix_transforms(severity=int(args.augment))
+    else:
+        data_transforms = gen_base_transform(args.im_height, args.im_width)
     train_set = torchvision.datasets.ImageFolder(os.path.join(DATA_DIR, 'train'), data_transforms)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size,
                                                shuffle=True, num_workers=4, pin_memory=True)
 
-    val_sampler = sample_batch(os.path.join(DATA_DIR, "val"), None, batch_size=32, transform=data_transforms)
+    val_sampler = sample_batch(os.path.join(DATA_DIR, "val"), None, batch_size=args.val_batch_size, transform=data_transforms)
 
     # Create a simple model
     if args.verbose:
@@ -69,11 +71,13 @@ def main(args):
     validation_losses = []
     validation_accuracies = []
 
+    timestep = 0
+
     for i in range(args.epochs):
         if args.verbose:
             print("Beginning epoch {0}".format(i))
         
-        train_total, train_correct = 0,0
+        train_total, train_correct = 0, 0
         for idx, (inputs, targets) in enumerate(train_loader):
             ## Train step 
             inputs = inputs.to(device=args.device)
@@ -88,9 +92,13 @@ def main(args):
             train_correct += predicted.eq(targets).sum().item()
             training_losses.append(loss.item())
 
-            if args.verbose:
-                print(f'training {100 * idx / len(train_loader):.2f}%: {train_correct / train_total:.3f}')
-                print("Loss:\t{0}".format(loss.item()))
+            # TODO: waaaay to verbose bruh
+            if args.verbose and timestep % args.print_every == 0:
+                print("Timestep {0}".format(timestep))
+                print("Training Loss:\t{0}\t\tAccuracy:{1:.3f}".format(loss.item(), train_correct / train_total))
+
+
+            timestep += 1
             
         
         
@@ -134,12 +142,15 @@ if __name__ == '__main__':
 
     parser.add_argument('--model', default="baseline")
     parser.add_argument('-b', '--batch-size', default=32, type=int)
+    parser.add_argument('-vb', '--val-batch-size', default=1000, type=int)
+    parser.add_argument('-a', '--augment', default=1, type=int)
     parser.add_argument('-e', '--epochs', default=200, type=int)
     parser.add_argument('-lr', '--learning-rate', default=1e-4, type=float)
     parser.add_argument('-h', '--im_height', default=64, type=int)
     parser.add_argument('-w', '--im_width', default=64, type=int)
     parser.add_argument('-d', '--dropout', default=0.6, type=float)
     parser.add_argument('-n', '--num-frozen-layers', default=6, type=int)
+    parser.add_argument('-p', '--print-every', default=100, type=int)
     parser.add_argument('--gpu', action="store_true")
     parser.add_argument('--verbose', action="store_true")
     parser.add_argument('--data_dir', default="tiny-imagenet-200", type=str)
@@ -158,7 +169,7 @@ if __name__ == '__main__':
 
     # Where intermediate checkpoints will be stored
     timestamp = datetime.now().strftime("%d-%m-%Y-%H:%M:%S")
-    args.output_dir = os.path.join(OUTPUT_DIR, "{0}_{1}_{2}_{3}_{4}_{5}_{6}".format(args.model, args.num_frozen_layers, args.dropout, args.epochs, args.batch_size, args.learning_rate, timestamp))
+    args.output_dir = os.path.join(OUTPUT_DIR, "{0}_{1}_{2}_{3}_{4}_{5}_{6}_{7}".format(args.model, args.num_frozen_layers, args.augment, args.dropout, args.epochs, args.batch_size, args.learning_rate, timestamp))
 
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
