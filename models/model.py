@@ -40,3 +40,17 @@ class BaselineResNet(nn.Module):
         x = self.dropout(x)
         x = self.final_fc(x)
         return x
+
+class Generator(nn.Module):
+    def __init__(self, im_height=64, im_width=64, bottleneck_length=2):
+        super(Generator, self).__init__()
+        input_length = im_height * im_width * 3
+        self.downsampling_layers = [nn.Linear(input_length//2**i, input_length//2**(i+1)) for i in range(bottleneck_length)]
+        self.upsampling_layers   = [nn.Linear(input_length//2**(i+1), input_length//2**i) for i in range(bottleneck_length-1, -1, -1)]
+
+    def forward(self, x):
+        for layer in self.downsampling_layers:
+            x = layer(x)
+        for layer in self.upsampling_layers:
+            x = layer(x)
+        return x
