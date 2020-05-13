@@ -25,6 +25,7 @@ def main(args):
     checkpoint = torch.load(args.classifier_path, map_location=args.device)
     classifier = BaselineResNet()
     classifier.load_state_dict(checkpoint["net"])
+    classifier = classifier.to(device=args.device)
     if args.verbose:
         print("Models loaded successfully")
 
@@ -104,13 +105,13 @@ def main(args):
 
         ## Save model
         if args.verbose:
-            print("Saving model checkpoint at end of epoch {0}".format(i))
+            print("Saving model checkpoint at end of epoch {0}".format(epoch))
         torch.save({
             'gen': gen.state_dict(),
             'dis' : dis.state_dict(),
             'dis_loss' : dis_losses,
             'gen_loss' : gen_losses,
-        }, os.path.join(args.output_dir, 'epoch_{0}_checkpoint.pt'.format(i)))
+        }, os.path.join(args.output_dir, 'epoch_{0}_checkpoint.pt'.format(epoch)))
 
 
 
