@@ -93,7 +93,7 @@ def main(args):
                 "fooling_loss" : loss_gen_gan.item()
             }
 
-            if args.verbose and iter % args.print_every == 0:
+            if args.verbose and iters % args.print_every == 0:
                 print("Generator loss", loss_gen_info)
                 print("Discriminator loss", loss.item())
 
