@@ -153,6 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--print-every', default=100, type=int)
     parser.add_argument('--gpu', action="store_true")
     parser.add_argument('--verbose', action="store_true")
+    parser.add_argument('--data_dir', default="tiny-imagenet-200", type=str)
     args = parser.parse_args()
 
     args.device = None
