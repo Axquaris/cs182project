@@ -77,7 +77,7 @@ def main(args):
             outputs = dis(fake).view(-1)
 
             # Target labels for our whitebox attack (just add one for simplicity)
-            adv_targets = torch.fmod(real_targets + 1, num_classes)
+            adv_targets = torch.fmod(real_targets + 1, num_classes).to(device=args.device)
 
             loss_gen_gan = criterion(outputs, dis_targets)
             loss_gen_adv = whitebox_criterion(classifier(fake), adv_targets)
