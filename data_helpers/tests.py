@@ -1,15 +1,15 @@
 import unittest, os
 from torchvision.datasets import ImageFolder
-from dataset import TransformsDataset
+import torch
+from dataset import sample_batch, gen_base_transform
+from config import DATA_DIR
 
-class TestDataset(unittest.TestCase):
 
-    def setUp(self):
-        self.data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "data")
-        self.base_ds = ImageFolder(self.data_dir, None)
+data_transforms = gen_base_transform()
+val_sampler = sample_batch(os.path.join(DATA_DIR, "val"), None, batch_size=1, transform=data_transforms)
 
-    def test_transform_dataset(self):
-        ## TODO
-        pass
+sample, _ = val_sampler()
+print(torch.max(sample))
+
 
 
