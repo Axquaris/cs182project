@@ -10,6 +10,3 @@ val_sampler = sample_batch(os.path.join(DATA_DIR, "val"), None, batch_size=1, tr
 
 sample, _ = val_sampler()
 print(torch.max(sample))
-
-
-

@@ -5,6 +5,8 @@ from functools import partial
 from torchvision import transforms
 # https://github.com/google-research/augmix
 from data_helpers.augmentations import augmix
+from data_helpers.config import DATA_DIR
+import os
 
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
@@ -70,3 +72,16 @@ def sample_batch(path_root, img_size, batch_size, transform=None):
         return loader
     
     return sample_fn
+
+def gen_label_to_words_dict():
+    words_path = os.path.join(DATA_DIR, "words.txt")
+    label_to_words = {}
+    with open(words_path, "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            label, words = line.split('\t')[0].strip(), " ".join(line.split('\t')[1:]).strip()
+            print(label)
+            print(words)
+            label_to_words[label] = words
+
+    return label_to_words

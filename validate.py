@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 from torch import nn
 from torchvision import transforms, models, datasets
-from data_helpers import DATA_DIR, sample_batch, gen_base_transform
+from data_helpers import DATA_DIR, sample_batch, gen_base_transform, gen_label_to_words_dict
 from models import BaselineResNet, Generator
 
 data_transforms_legacy = transforms.Compose([
@@ -16,13 +16,23 @@ data_transforms_legacy = transforms.Compose([
 data_transforms = gen_base_transform()
 
 dummy_ds = datasets.ImageFolder(os.path.join(DATA_DIR, "val"), transform=data_transforms)
-num_classes = len(dummy_ds.classes)
-
+classes = dummy_ds.classes
 del dummy_ds
+
+num_classes = len(classes)
+label_to_words = gen_label_to_words_dict()
+
+
 val_sampler = sample_batch(os.path.join(DATA_DIR, "val"), None, batch_size=1024, transform=data_transforms)
 train_sampler = sample_batch(os.path.join(DATA_DIR, "train"), None, batch_size=5, transform=data_transforms)
 
 criterion = nn.CrossEntropyLoss()
+
+def class_idx_to_word(class_idx):
+    return label_to_words[classes[class_idx]]
+
+def get_words(labels_t):
+    return [class_idx_to_word(i) for i in labels_t.numpy()]
 
 # Validation of model
 def validate(model):
@@ -44,9 +54,10 @@ def validate_gan(gen, clf):
     with torch.no_grad():
         pertub = gen(inputs)
         x_adv = torch.add(pertub, inputs)
-        target_labels = torch.fmod(true_labels + 1, num_classes)
-        predicted_labels_adv = torch.argmax(clf(x_adv), dim=1)
-        predicted_labels = torch.argmax(clf(inputs), dim=1)
+        target_labels = get_words(torch.fmod(true_labels + 1, num_classes))
+        predicted_labels_adv = get_words(torch.argmax(clf(x_adv), dim=1))
+        predicted_labels = get_words(torch.argmax(clf(inputs), dim=1))
+        true_labels = get_words(true_labels)
         print("input norm",torch.norm(inputs))
         print("pertubation norm", torch.norm(pertub))
         print("True labels", true_labels)
