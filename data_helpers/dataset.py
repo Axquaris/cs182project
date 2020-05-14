@@ -80,8 +80,6 @@ def gen_label_to_words_dict():
         lines = f.readlines()
         for line in lines:
             label, words = line.split('\t')[0].strip(), " ".join(line.split('\t')[1:]).strip()
-            print(label)
-            print(words)
             label_to_words[label] = words
 
     return label_to_words

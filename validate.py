@@ -58,8 +58,6 @@ def validate_gan(gen, clf):
         predicted_labels_adv = get_words(torch.argmax(clf(x_adv), dim=1))
         predicted_labels = get_words(torch.argmax(clf(inputs), dim=1))
         true_labels = get_words(true_labels)
-        print("input norm",torch.norm(inputs))
-        print("pertubation norm", torch.norm(pertub))
         print("True labels", true_labels)
         print("Target labels", target_labels)
         print("Predicted labels on input", predicted_labels)
