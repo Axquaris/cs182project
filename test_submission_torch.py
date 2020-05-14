@@ -4,28 +4,28 @@ from PIL import Image
 import numpy as np
 import torch
 import torchvision.transforms as transforms
-from model import Net
+from data_helpers import gen_base_transform
+from models import BaselineResNet
+
+FINAL_MODEL_PATH = "./latest.pt"
 
 
 def main():
     # Load the classes
     data_dir = pathlib.Path('./data/tiny-imagenet-200/train/')
     CLASSES = sorted([item.name for item in data_dir.glob('*')])
-    im_height, im_width = 64, 64
 
-    ckpt = torch.load('latest.pt')
-    model = Net(len(CLASSES), im_height, im_width)
+    ckpt = torch.load(FINAL_MODEL_PATH)
+    model = BaselineResNet()
     model.load_state_dict(ckpt['net'])
     model.eval()
 
-    data_transforms = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0, 0, 0), tuple(np.sqrt((255, 255, 255)))),
-    ])
+    data_transforms = gen_base_transform()
 
     # Loop through the CSV file and make a prediction for each line
     with open('eval_classified.csv', 'w') as eval_output_file:  # Open the evaluation CSV file for writing
         for line in pathlib.Path(sys.argv[1]).open():  # Open the input CSV file for reading
+            print(line)
             image_id, image_path, image_height, image_width, image_channels = line.strip().split(
                 ',')  # Extract CSV info
 

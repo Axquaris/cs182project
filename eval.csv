@@ -1,5 +1,5 @@
-0,data/tiny-imagenet-200/val/images/val_0.JPEG,64,64,3
-1,data/tiny-imagenet-200/val/images/val_1.JPEG,64,64,3
-2,data/tiny-imagenet-200/val/images/val_2.JPEG,64,64,3
-3,data/tiny-imagenet-200/val/images/val_3.JPEG,64,64,3
-4,data/tiny-imagenet-200/val/images/val_4.JPEG,64,64,3
+23,data/tiny-imagenet-200/val/n01629819/val_23.JPEG,64,64,3
+70,data/tiny-imagenet-200/val/n01770393/val_70.JPEG,64,64,3
+425,data/tiny-imagenet-200/val/n09193705/val_425.JPEG,64,64,3
+68,data/tiny-imagenet-200/val/n01443537/val_68.JPEG,64,64,3
+8871,data/tiny-imagenet-200/val/n09193705/val_8871.JPEG,64,64,3
