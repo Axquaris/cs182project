@@ -7,6 +7,7 @@ and to validate your own code submission.
 
 import glob
 import os
+import random
 import argparse
 import numpy as np
 import torch
@@ -54,7 +55,22 @@ def main(args):
     # Create a simple model
     if args.verbose:
         print("loading model...")
-    model = model_cls(im_height=args.im_height, im_width=args.im_width, dropout=args.dropout, num_frozen_layers=args.num_frozen_layers).to(device=args.device)
+    if args.adversarial:
+        # Load Generator for adversarial examples
+        checkpoint = torch.load(args.gan_path, map_location=args.device)
+        gen = Generator()
+        gen.load_state_dict(checkpoint['gen'])
+        gen = gen.to(device=args.device)
+    # Load our classifier model
+    if args.pre_trained:
+        # Pretrained
+        checkpoint = torch.load(args.model_path, map_location=args.device)
+        model = model_cls()
+        model.load_state_dict(checkpoint['net'])
+        model = model.to(device=args.device)
+    else:
+        # From scratch
+        model = model_cls(im_height=args.im_height, im_width=args.im_width, dropout=args.dropout, num_frozen_layers=args.num_frozen_layers).to(device=args.device)
     if args.verbose:
         print("Successfully loaded model")
     # source: https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html
@@ -83,6 +99,12 @@ def main(args):
             inputs = inputs.to(device=args.device)
             targets = targets.to(device=args.device)
             optim.zero_grad()
+
+            # Adversarially pertrube inputs with probability epsilon if in adversarial mode
+            if args.adversarial and random.random() < args.epsilon:
+                pertubs = gen(inputs)
+                inputs = torch.add(pertubs, inputs)
+                
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             loss.backward()
@@ -92,7 +114,6 @@ def main(args):
             train_correct += predicted.eq(targets).sum().item()
             training_losses.append(loss.item())
 
-            # TODO: waaaay to verbose bruh
             if args.verbose and timestep % args.print_every == 0:
                 print("Timestep {0}".format(timestep))
                 print("Training Loss:\t{0}\t\tAccuracy:{1:.3f}".format(loss.item(), train_correct / train_total))
@@ -141,6 +162,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(add_help=False)
 
     parser.add_argument('--model', default="baseline")
+    parser.add_argument('--pre-trained', action="store_true")
+    parser.add_argument('--model-path', default=None, type=str)
+    parser.add_argument('-gp', '--gan-path', default=None, type=str)
+    parser.add_argument('-eps', '--epsilon', default=0.1, type=float)
     parser.add_argument('-b', '--batch-size', default=32, type=int)
     parser.add_argument('-vb', '--val-batch-size', default=1000, type=int)
     parser.add_argument('-a', '--augment', default=1, type=int)
@@ -153,8 +178,15 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--print-every', default=100, type=int)
     parser.add_argument('--gpu', action="store_true")
     parser.add_argument('--verbose', action="store_true")
+    parser.add_argument('--adversarial', action="store_true")
     parser.add_argument('--data_dir', default="tiny-imagenet-200", type=str)
     args = parser.parse_args()
+
+    ## Arg checking
+    if args.pre_trained:
+        assert args.model_path, "pretrained modle requires a path"
+    if args.adversarial:
+        assert args.gan_path, "must specify a path to a GAN in order to inject adversarial examples"
 
     args.device = None
     if args.gpu and torch.cuda.is_available():
@@ -169,7 +201,8 @@ if __name__ == '__main__':
 
     # Where intermediate checkpoints will be stored
     timestamp = datetime.now().strftime("%d-%m-%Y-%H:%M:%S")
-    args.output_dir = os.path.join(OUTPUT_DIR, "{0}_{1}_{2}_{3}_{4}_{5}_{6}_{7}".format(args.model, args.num_frozen_layers, args.augment, args.dropout, args.epochs, args.batch_size, args.learning_rate, timestamp))
+    args.output_dir = os.path.join(OUTPUT_DIR, "{0}_{1}_{2}_{3}_{4}_{5}_{6}_{7}".format(args.model, args.num_frozen_layers, 
+        args.augment, args.dropout, args.epochs, args.batch_size, args.learning_rate, timestamp)) if not args.pre_trained else os.path.join(OUTPUT_DIR, "pretrained_{0}".format(timestamp))
 
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
